@@ -23,12 +23,13 @@ const Spreadsheet = () => {
     setData(prevData => {
       let newData = [...prevData];
       if (col >= newData[0].length) {
-        newData = newData.map(rowData => [...rowData, { value: "", style: {} }]);
+        newData = newData.map(rowData => [...rowData, { value: "", raw: "", style: {} }]);
       }
-      newData[row][col] = { ...newData[row][col], value };
+      newData[row][col] = { ...newData[row][col], raw: value, value: evaluateFormula(value, newData) };
       return newData;
     });
   };
+  
     
   
   const applyStyle = (styleKey, value) => {
@@ -44,39 +45,40 @@ const Spreadsheet = () => {
   };
   
 
-  const evaluateFormula = (formula) => {
+  const evaluateFormula = (formula, spreadsheetData) => {
     try {
-      if (formula.startsWith("=")) {
-        const parsedFormula = formula.slice(1).toUpperCase();
-        const match = parsedFormula.match(/(SUM|AVERAGE|MAX|MIN|COUNT)\((\w+\d+):(\w+\d+)\)/);
-        if (match) {
-          const [, func, startCell, endCell] = match;
-          const [startRow, startCol] = parseCell(startCell);
-          const [endRow, endCol] = parseCell(endCell);
-
-          let values = [];
-          for (let r = startRow; r <= endRow; r++) {
-            for (let c = startCol; c <= endCol; c++) {
-              let cellValue = parseFloat(data[r][c]?.value);
-              if (!isNaN(cellValue)) values.push(cellValue);
-            }
+      if (!formula || !formula.startsWith("=")) return formula;
+      const parsedFormula = formula.slice(1).toUpperCase();
+      const match = parsedFormula.match(/(SUM|AVERAGE|MAX|MIN|COUNT)\((\w+\d+):(\w+\d+)\)/);
+      
+      if (match) {
+        const [, func, startCell, endCell] = match;
+        const [startRow, startCol] = parseCell(startCell);
+        const [endRow, endCol] = parseCell(endCell);
+  
+        let values = [];
+        for (let r = startRow; r <= endRow; r++) {
+          for (let c = startCol; c <= endCol; c++) {
+            let cellValue = parseFloat(spreadsheetData[r][c]?.value);
+            if (!isNaN(cellValue)) values.push(cellValue);
           }
-
-          switch (func) {
-            case "SUM": return values.reduce((a, b) => a + b, 0);
-            case "AVERAGE": return values.length ? (values.reduce((a, b) => a + b, 0) / values.length) : 0;
-            case "MAX": return Math.max(...values);
-            case "MIN": return Math.min(...values);
-            case "COUNT": return values.length;
-            default: return "ERROR";
-          }
+        }
+  
+        switch (func) {
+          case "SUM": return values.reduce((a, b) => a + b, 0);
+          case "AVERAGE": return values.length ? (values.reduce((a, b) => a + b, 0) / values.length) : 0;
+          case "MAX": return Math.max(...values);
+          case "MIN": return Math.min(...values);
+          case "COUNT": return values.length;
+          default: return "ERROR";
         }
       }
       return formula;
     } catch (error) {
-      if (!formula) return "";
-    }    
+      return "ERROR";
+    }
   };
+  
 
   const uploadCSV = (event) => {
     const file = event.target.files[0];
@@ -185,7 +187,7 @@ const Spreadsheet = () => {
                 <td key={col} className="border border-emerald-500 p-2">
                   <input
                     type="text"
-                    value={cell.raw?.startsWith("=") ? evaluateFormula(cell.raw) : cell.value}
+                    value={cell.raw?.startsWith("=") ? evaluateFormula(cell.raw, data) : cell.value}
                     onFocus={() => setSelectedCell([row, col])}
                     onChange={(e) => handleChange(row, col, e.target.value)}
                     className="w-full bg-transparent text-white text-center focus:outline-none"
