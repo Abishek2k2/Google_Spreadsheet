@@ -1,10 +1,13 @@
 import { useState, useEffect } from "react";
-import { Bold, Italic } from "lucide-react";
+import { Bold, Italic, Search } from "lucide-react";
 
 const ROWS = 10;
 const COLS = 10;
 
 const Spreadsheet = () => {
+  const [findText, setFindText] = useState("");
+  const [replaceText, setReplaceText] = useState("");
+
   const [data, setData] = useState(() => {
     const savedData = localStorage.getItem("spreadsheetData");
     return savedData
@@ -130,6 +133,18 @@ const Spreadsheet = () => {
     return label;
   };  
 
+  const findAndReplace = () => {
+    const newData = [...data];
+    newData.forEach((rowData, row) => {
+      rowData.forEach((cell, col) => {
+        if (cell.value.includes(findText)) {
+          newData[row][col].value = cell.value.replace(findText, replaceText);
+        }
+      });
+    });
+    setData(newData);
+  };
+
   return (
     <div className="p-4">
       {/* Toolbar */}
@@ -166,6 +181,25 @@ const Spreadsheet = () => {
           Download CSV
         </button>
 
+      </div>
+      <div className="flex gap-2 mb-4">
+        <input
+          type="text"
+          placeholder="Find"
+          value={findText}
+          onChange={(e) => setFindText(e.target.value)}
+          className="p-2 bg-gray-700 text-white rounded"
+        />
+        <input
+          type="text"
+          placeholder="Replace"
+          value={replaceText}
+          onChange={(e) => setReplaceText(e.target.value)}
+          className="p-2 bg-gray-700 text-white rounded"
+        />
+        <button onClick={findAndReplace} className="p-2 bg-blue-600 text-white rounded">
+          <Search className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Spreadsheet Table */}
